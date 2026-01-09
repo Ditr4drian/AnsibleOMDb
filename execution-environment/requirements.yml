@@ -1,0 +1,5 @@
+collections:
+  - name: ditra.cisco
+    source: https://github.com/ditramx/ditra.general.git
+    type: git
+    version: main
