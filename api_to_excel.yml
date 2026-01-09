@@ -1,4 +1,5 @@
 - name: Query OMDb API and create Excel
+  become: false
   hosts: ditra
   gather_facts: false
   vars_files:
@@ -79,7 +80,7 @@
             from_email: "{{ from_email }}"
             to_emails: "{{ to_emails }}"
             subject: "Reporte"
-            body: "Texto plano en body"
+            body: "{{ lookup('file', 'templates/reporte.html') }}"
             html_body: "{{ lookup('file', 'templates/reporte.html') }}"
           delegate_to: localhost
           when: excel_done is defined and not excel_done.failed
