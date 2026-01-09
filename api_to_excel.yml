@@ -15,39 +15,13 @@
         - name: Check host connectivity
           ansible.builtin.wait_for_connection:
             timeout: 10
-          register: connectivity_check
 
         - name: Log Host Reachable
           ansible.builtin.lineinfile:
             path: "{{ log_file }}"
             line: "[{{ ts }}][SUCCESS] Host {{ inventory_hostname }} is reachable"
+            create: true
           delegate_to: localhost
-          create: yes
-          changed_when: false
-
-        - name: Log Host Unreachable
-          ansible.builtin.lineinfile:
-            path: "{{ log_file }}"
-            line: "[{{ ts }}][WARNING] Host {{ inventory_hostname }} is unreachable, continuing with API process"
-          delegate_to: localhost
-          create: yes
-          changed_when: false
-
-        - name: Log Success
-          ansible.builtin.lineinfile:
-            path: "{{ log_file }}"
-            line: "[{{ ts }}][INFO] Host {{ inventory_hostname }} - Success: {{ search_term }} -> {{ output_file }}"
-          delegate_to: localhost
-          create: yes
-          changed_when: false
-          when: host_is_reachable | default(false)
-
-        - name: Log Failure
-          ansible.builtin.lineinfile:
-            path: "{{ log_file }}"
-            line: "[{{ ts }}][ERROR] Host {{ inventory_hostname }} - {{ ansible_failed_task.name }}: {{ ansible_failed_result.msg | default('Execution failed') }}"
-          delegate_to: localhost
-          create: yes
           changed_when: false
 
         - name: Set connectivity flag
@@ -59,8 +33,8 @@
           ansible.builtin.lineinfile:
             path: "{{ log_file }}"
             line: "[{{ ts }}][WARNING] Host {{ inventory_hostname }} is unreachable, continuing with API process"
+            create: true
           delegate_to: localhost
-          create: yes
           changed_when: false
 
         - name: Set connectivity flag
@@ -82,17 +56,6 @@
               - api_res.json.Response == "True"
             fail_msg: "API Error: {{ api_res.json.Error | default('Unknown') }}"
 
-        - name: Debug API Response
-          ansible.builtin.debug:
-            msg:
-              - "API Status: {{ api_res.status }}"
-              - "Response: {{ api_res.json.Response }}"
-              - "Total Results: {{ api_res.json.totalResults | default('N/A') }}"
-              - "Search Term: {{ search_term }}"
-              - "Results Found: {{ api_res.json.Search | length if api_res.json.Response == 'True' else 0 }}"
-          delegate_to: localhost
-          when: not (host_is_reachable | default(false))
-
         - name: Create Excel
           ditra.cisco.one_sheet_excel:
             create: true
@@ -103,10 +66,6 @@
             sheet_name: "movies"
           delegate_to: localhost
           register: excel_done
-
-        - name: Debug
-          ansible.builtin.debug:
-            var: excel_done
 
         - name: Send notification
           ditra.cisco.send_email:
@@ -121,29 +80,21 @@
             subject: "Reporte"
             body: "Texto plano en body"
             html_body: "{{ lookup('file', 'templates/reporte.html') }}"
-          when: not excel_done.failed
-
-        - name: Remove temp file
-          ansible.builtin.file:
-            path: "/tmp/api_data.json"
-            state: absent
-          delegate_to: localhost
-          when: host_is_reachable | default(false)
+          when: excel_done is defined and not excel_done.failed
 
         - name: Log Success
           ansible.builtin.lineinfile:
             path: "{{ log_file }}"
             line: "[{{ ts }}][INFO] Host {{ inventory_hostname }} - Success: {{ search_term }} -> {{ output_file }}"
+            create: true
           delegate_to: localhost
-          create: yes
           changed_when: false
-          when: host_is_reachable | default(false)
 
       rescue:
         - name: Log Failure
           ansible.builtin.lineinfile:
             path: "{{ log_file }}"
-            line: "[{{ ts }}][ERROR] Host {{ inventory_hostname }} - {{ ansible_failed_task.name }}: {{ ansible_failed_result.msg | default('Execution failed') }}"
+            line: "[{{ ts }}][ERROR] Host {{ inventory_hostname }} - Error en proceso API/Excel"
+            create: true
           delegate_to: localhost
-          create: yes
           changed_when: false
