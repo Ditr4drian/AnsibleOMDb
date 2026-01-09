@@ -1,5 +1,5 @@
 - name: Query OMDb API and create Excel
-  become: true
+  become: false
   hosts: ditra
   gather_facts: false
   vars_files:
