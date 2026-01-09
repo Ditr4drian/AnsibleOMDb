@@ -18,9 +18,36 @@
           register: connectivity_check
 
         - name: Log Host Reachable
-          ansible.builtin.shell: |
-            echo "[{{ ts }}][SUCCESS] Host {{ inventory_hostname }} is reachable" >> "{{ log_file }}"
+          ansible.builtin.lineinfile:
+            path: "{{ log_file }}"
+            line: "[{{ ts }}][SUCCESS] Host {{ inventory_hostname }} is reachable"
           delegate_to: localhost
+          create: yes
+          changed_when: false
+
+        - name: Log Host Unreachable
+          ansible.builtin.lineinfile:
+            path: "{{ log_file }}"
+            line: "[{{ ts }}][WARNING] Host {{ inventory_hostname }} is unreachable, continuing with API process"
+          delegate_to: localhost
+          create: yes
+          changed_when: false
+
+        - name: Log Success
+          ansible.builtin.lineinfile:
+            path: "{{ log_file }}"
+            line: "[{{ ts }}][INFO] Host {{ inventory_hostname }} - Success: {{ search_term }} -> {{ output_file }}"
+          delegate_to: localhost
+          create: yes
+          changed_when: false
+          when: host_is_reachable | default(false)
+
+        - name: Log Failure
+          ansible.builtin.lineinfile:
+            path: "{{ log_file }}"
+            line: "[{{ ts }}][ERROR] Host {{ inventory_hostname }} - {{ ansible_failed_task.name }}: {{ ansible_failed_result.msg | default('Execution failed') }}"
+          delegate_to: localhost
+          create: yes
           changed_when: false
 
         - name: Set connectivity flag
@@ -29,9 +56,11 @@
 
       rescue:
         - name: Log Host Unreachable
-          ansible.builtin.shell: |
-            echo "[{{ ts }}][WARNING] Host {{ inventory_hostname }} is unreachable, continuing with API process" >> "{{ log_file }}"
+          ansible.builtin.lineinfile:
+            path: "{{ log_file }}"
+            line: "[{{ ts }}][WARNING] Host {{ inventory_hostname }} is unreachable, continuing with API process"
           delegate_to: localhost
+          create: yes
           changed_when: false
 
         - name: Set connectivity flag
@@ -64,14 +93,6 @@
           delegate_to: localhost
           when: not (host_is_reachable | default(false))
 
-        - name: Save API data to temp file
-          ansible.builtin.copy:
-            content: "{{ [api_res.json] if api_res.json is mapping else api_res.json | to_json }}"
-            dest: "/tmp/api_data.json"
-            mode: "0644"
-          delegate_to: localhost
-          when: host_is_reachable | default(false)
-
         - name: Create Excel
           ditra.cisco.one_sheet_excel:
             create: true
@@ -95,7 +116,8 @@
             smtp_password: "{{ smtp_password }}"
             use_tls: true
             from_email: "{{ from_email }}"
-            to_emails: "{{ to_emails }}"
+            to_emails:
+              - "adrian.ortiz@ditra.mx"
             subject: "Reporte"
             body: "Texto plano en body"
             html_body: "{{ lookup('file', 'templates/reporte.html') }}"
@@ -109,17 +131,19 @@
           when: host_is_reachable | default(false)
 
         - name: Log Success
-          ansible.builtin.shell: |
-            echo "[{{ ts }}][INFO] Host {{ inventory_hostname }} - Success: {{ search_term }} -> {{ output_file }}" >> "{{ log_file }}"
+          ansible.builtin.lineinfile:
+            path: "{{ log_file }}"
+            line: "[{{ ts }}][INFO] Host {{ inventory_hostname }} - Success: {{ search_term }} -> {{ output_file }}"
           delegate_to: localhost
+          create: yes
           changed_when: false
           when: host_is_reachable | default(false)
 
       rescue:
         - name: Log Failure
-          ansible.builtin.shell: |
-            echo "[{{ ts }}][ERROR] Host {{ inventory_hostname }} - \
-            {{ ansible_failed_task.name }}: \
-            {{ ansible_failed_result.msg | default('Execution failed') }}" >> "{{ log_file }}"
+          ansible.builtin.lineinfile:
+            path: "{{ log_file }}"
+            line: "[{{ ts }}][ERROR] Host {{ inventory_hostname }} - {{ ansible_failed_task.name }}: {{ ansible_failed_result.msg | default('Execution failed') }}"
           delegate_to: localhost
+          create: yes
           changed_when: false
