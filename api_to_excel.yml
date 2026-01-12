@@ -1,6 +1,6 @@
 - name: Query OMDb API and create Excel
   become: false
-  hosts: ditra
+  hosts: all
   gather_facts: false
   vars_files:
     - vars/secrets.yml
