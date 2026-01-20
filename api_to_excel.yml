@@ -68,22 +68,6 @@
             path: "."
             sheet_name: "movies"
           delegate_to: localhost
-          register: excel_done
-
-        - name: Send notification
-          ditra.cisco.send_email:
-            smtp_server: "{{ smtp_server }}"
-            smtp_port: "{{ smtp_port }}"
-            smtp_username: "{{ smtp_username }}"
-            smtp_password: "{{ smtp_password }}"
-            use_tls: true
-            from_email: "{{ from_email }}"
-            to_emails: "{{ to_emails }}"
-            subject: "Reporte"
-            body: "{{ lookup('file', 'templates/reporte.html') }}"
-            html_body: "{{ lookup('file', 'templates/reporte.html') }}"
-          delegate_to: localhost
-          when: excel_done is defined and not excel_done.failed
 
         - name: Log Success
           ansible.builtin.lineinfile:
